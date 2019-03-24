@@ -8,4 +8,9 @@ public class LongMessage implements Message
 	{
 		this.l = l;
 	}
+
+	public Long getMsg()
+	{
+		return this.l;
+	}
 }

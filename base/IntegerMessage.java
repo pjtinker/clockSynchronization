@@ -8,4 +8,9 @@ public class IntegerMessage implements Message
 	{
 		this.i = i;
 	}
+
+	public Integer getMsg()
+	{
+		return this.i;
+	}
 }

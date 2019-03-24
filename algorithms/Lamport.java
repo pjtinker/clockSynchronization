@@ -14,7 +14,6 @@ public class Lamport {
      * Lamport's logical clock algorithm. Clock counts will be passed as the message
      * itself.
      * 
-     * Test
      */
     public static void main(String[] args) 
     {
