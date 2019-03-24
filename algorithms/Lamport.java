@@ -72,7 +72,9 @@ public class Lamport {
         public void updateClock(IntegerMessage im)
         {
             this.logicalClockCount = Math.max(im.i, this.logicalClockCount) + 1;
-            System.out.printf("Process %d updated.  Internal count: %d%n", this.id, this.logicalClockCount);
+            System.out.printf("Process %d updated.  Internal count: %d%n", 
+                              this.id,
+                              this.logicalClockCount);
         }
         @Override
         public void run() 
@@ -93,7 +95,10 @@ public class Lamport {
                 internalEvent();
                 IntegerMessage recvmsg = (IntegerMessage) proxy.recvMessage((this.id % 2) + 1);
                 this.logicalClockCount += 1;
-                System.out.printf("Received msg at process %d.  Internal count: %d, Recv count: %d%n", this.id, this.logicalClockCount, recvmsg.i);
+                System.out.printf("Received msg at process %d.  Internal count: %d, Recv count: %d%n", 
+                                  this.id,
+                                  this.logicalClockCount, 
+                                  recvmsg.i);
                 updateClock(recvmsg);
 
                 this.logicalClockCount += 1;
