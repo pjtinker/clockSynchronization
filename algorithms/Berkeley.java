@@ -14,8 +14,8 @@ import clockSynchronization.base.NetworkQueue;
 
 public class Berkeley {
     /**
-     * Lamport's logical clock algorithm. Clock counts will be passed as the message
-     * itself.
+     * Berkeley's clock synchronization algorithm. 
+     * Node 0: master
      * 
      */
     public static void main(String[] args) 
@@ -67,6 +67,7 @@ public class Berkeley {
 
     static class BerkeleyMasterClient extends Client 
     {
+
         private int id;
         private ArrayList<BerkeleySlaveClient> slaves;
         public BerkeleyMasterClient(NetworkProxy proxy, int id, ArrayList<BerkeleySlaveClient> slaves)
@@ -129,6 +130,10 @@ public class Berkeley {
 
     static class BerkeleySlaveClient extends Client
     {
+        /**
+         * Passing IntegerMessage to slaves signals a request for time.
+         * Passing a LongMessage indicates that message contains a clock update.
+         */
         private int id;
         public BerkeleySlaveClient(NetworkProxy proxy, int id)
         {
@@ -149,6 +154,7 @@ public class Berkeley {
             while(true)
             {
                 Message recvmsg = proxy.recvMessage(0);
+                // Check message type and handle accordingly
                 if(recvmsg instanceof IntegerMessage){
                     System.out.printf("Time request message received at slave: %d%n", this.id);
                     proxy.sendMessage(new LongMessage(proxy.getTime()), 0);
