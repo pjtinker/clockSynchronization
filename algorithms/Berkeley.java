@@ -24,13 +24,14 @@ public class Berkeley {
         FaultyClock goodClock = new FaultyClock(0, 0);
         FaultyClock badClock1 = new FaultyClock(.01, 1e6);
         FaultyClock badClock2 = new FaultyClock(.03, 1e7);
+        FaultyClock badClock3 = new FaultyClock(.08, 1e3);
 
         NetworkLatency latency = new Latency();
 
         NetworkProxy proxy1 = new NetworkProxy(queue, goodClock, latency);
         NetworkProxy proxy2 = new NetworkProxy(queue, badClock1, latency);
         NetworkProxy proxy3 = new NetworkProxy(queue, badClock2, latency);
-        NetworkProxy proxy4 = new NetworkProxy(queue, badClock2, latency);
+        NetworkProxy proxy4 = new NetworkProxy(queue, badClock3, latency);
 
         BerkeleySlaveClient slave1 = new BerkeleySlaveClient(proxy2, 1);
         BerkeleySlaveClient slave2 = new BerkeleySlaveClient(proxy3, 2);
@@ -143,10 +144,6 @@ public class Berkeley {
 
         public int getID() { return this.id; }
 
-        public void adjustClock(Long adjustment)
-        {
-
-        }
         @Override
         public void run()
         {
