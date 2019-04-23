@@ -1,171 +1,205 @@
 package clockSynchronization.algorithms;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import clockSynchronization.base.Client;
 import clockSynchronization.base.ClockReader;
 import clockSynchronization.base.FaultyClock;
-import clockSynchronization.base.IntegerMessage;
+import clockSynchronization.base.FieldMessage;
 import clockSynchronization.base.NetworkLatency;
-import clockSynchronization.base.LongMessage;
 import clockSynchronization.base.Message;
 import clockSynchronization.base.NetworkProxy;
 import clockSynchronization.base.NetworkQueue;
 
-public class Berkeley {
-    /**
-     * Berkeley's clock synchronization algorithm. 
-     * Node 0: master
-     * 
-     */
-    public static void main(String[] args) 
-    {
-        NetworkQueue queue = new NetworkQueue();
-        FaultyClock goodClock = new FaultyClock(0, 0);
-        FaultyClock badClock1 = new FaultyClock(.01, 1e6);
-        FaultyClock badClock2 = new FaultyClock(.03, 1e7);
-        FaultyClock badClock3 = new FaultyClock(.08, 1e3);
+public class Berkeley
+{
+	/**
+	 * Berkeley's clock synchronization algorithm. Node 0: master
+	 * 
+	 */
+	public static void main(String[] args)
+	{
+		NetworkQueue queue = new NetworkQueue();
 
-        NetworkLatency latency = new Latency();
+		/*
+		 * FaultyClock badClock0 = new FaultyClock(.01, 1e6); FaultyClock
+		 * badClock1 = new FaultyClock(.02, 1e6); FaultyClock badClock2 = new
+		 * FaultyClock(-.015, 1e6); FaultyClock badClock3 = new
+		 * FaultyClock(-.01, 1e6);
+		 */
 
-        NetworkProxy proxy1 = new NetworkProxy(queue, goodClock, latency);
-        NetworkProxy proxy2 = new NetworkProxy(queue, badClock1, latency);
-        NetworkProxy proxy3 = new NetworkProxy(queue, badClock2, latency);
-        NetworkProxy proxy4 = new NetworkProxy(queue, badClock3, latency);
+		FaultyClock badClock0 = new FaultyClock(.0, 1e6);
+		FaultyClock badClock1 = new FaultyClock(.0, 1e6);
+		FaultyClock badClock2 = new FaultyClock(0, 1e6);
+		FaultyClock badClock3 = new FaultyClock(0, 1e6);
 
-        BerkeleySlaveClient slave1 = new BerkeleySlaveClient(proxy2, 1);
-        BerkeleySlaveClient slave2 = new BerkeleySlaveClient(proxy3, 2);
-        BerkeleySlaveClient slave3 = new BerkeleySlaveClient(proxy4, 3);
+		NetworkLatency latency = new Latency();
 
-        ArrayList<BerkeleySlaveClient> slaves = new ArrayList<BerkeleySlaveClient>();
+		NetworkProxy proxy1 = new NetworkProxy(queue, badClock0, latency);
+		NetworkProxy proxy2 = new NetworkProxy(queue, badClock1, latency);
+		NetworkProxy proxy3 = new NetworkProxy(queue, badClock2, latency);
+		NetworkProxy proxy4 = new NetworkProxy(queue, badClock3, latency);
 
-        slaves.add(slave1);
-        slaves.add(slave2);
-        slaves.add(slave3);
-        
-        BerkeleyMasterClient master = new BerkeleyMasterClient(proxy1, 0, slaves);
+		BerkeleySlaveClient slave1 = new BerkeleySlaveClient(proxy2, 1);
+		BerkeleySlaveClient slave2 = new BerkeleySlaveClient(proxy3, 2);
+		BerkeleySlaveClient slave3 = new BerkeleySlaveClient(proxy4, 3);
 
-        for(BerkeleySlaveClient slave : slaves)
-        {
-            new Thread(slave).start();
-            System.out.printf("Slave %d running...%n", slave.getID());
-        }
+		ArrayList<BerkeleySlaveClient> slaves = new ArrayList<BerkeleySlaveClient>();
 
-        new Thread(master).start();
-        System.out.println("Master running...");
-    }
+		slaves.add(slave1);
+		slaves.add(slave2);
+		slaves.add(slave3);
 
-    static class Latency implements NetworkLatency 
-    {
+		ClockReader cr = new ClockReader();
 
-        @Override
-        public long getLatency(int source, int destination) 
-        {
-            return 500000000L;
-        }
+		cr.addClock(badClock0);
+		cr.addClock(badClock1);
+		cr.addClock(badClock2);
+		cr.addClock(badClock3);
 
-    }
+		BerkeleyMasterClient master = new BerkeleyMasterClient(proxy1, 0, slaves);
 
-    static class BerkeleyMasterClient extends Client 
-    {
+		for (BerkeleySlaveClient slave : slaves)
+		{
+			new Thread(slave).start();
+			// System.out.printf("Slave %d running...%n", slave.getID());
+		}
 
-        private int id;
-        private ArrayList<BerkeleySlaveClient> slaves;
-        public BerkeleyMasterClient(NetworkProxy proxy, int id, ArrayList<BerkeleySlaveClient> slaves)
-        {
-            super(proxy);
-            this.id = id;
-            this.slaves = slaves;
-        }
+		new Thread(master).start();
+		// System.out.println("Master running...");
 
-        public long calculateOffset(ArrayList<Long> times)
-        {
-            long totalDiffs = 0L;
-            for(long l : times)
-            {
-                totalDiffs += l;
-            }
-            return totalDiffs / this.slaves.size();
-        }
+		cr.printClocks(50);
+	}
 
-        @Override
-        public void run()
-        {
-            proxy.setID(this.id);
-            ArrayList<Long> diffs = new ArrayList<Long>();
-            while(true)
-            {
-                try
-                {
-                    Thread.sleep(1000);
-                }
-                catch (InterruptedException e)
-                {
-                }
+	static class Latency implements NetworkLatency
+	{
+		Random rand;
 
-                for (BerkeleySlaveClient slave : this.slaves)
-                {
-                    int slave_id = slave.getID();
-                    long startTime = proxy.getTime();
-                    IntegerMessage sendmsg = new IntegerMessage(slave_id);
-                    System.out.printf("Requesting clock from slave: %d%n", slave_id);
-                    proxy.sendMessage(sendmsg, slave_id);
+		public Latency()
+		{
+			rand = new Random();
+		}
 
-                    LongMessage recvmsg = (LongMessage) proxy.recvMessage(slave_id);
-                    long diff = proxy.getTime() - startTime;
-                    diffs.add(diff);
-                    System.out.printf("Received msg from slave: %d%nMessage: %d%n", slave_id, recvmsg.l);
-                }
-                long offset = this.calculateOffset(diffs);
-                System.out.printf("Calculated offset: %d%n", offset);
-                for (BerkeleySlaveClient slave : this.slaves)
-                {
-                    int slave_id = slave.getID();
-                    proxy.sendMessage(new LongMessage(offset), slave_id);
+		@Override
+		public long getLatency(int source, int destination)
+		{
+			return (long) (500000000L + rand.nextGaussian() * 10000000);
+			// return 500000000L;
+		}
 
-                }
-            }
+	}
 
-        }
-    }
+	static class BerkeleyMasterClient extends Client
+	{
 
-    static class BerkeleySlaveClient extends Client
-    {
-        /**
-         * Passing IntegerMessage to slaves signals a request for time.
-         * Passing a LongMessage indicates that message contains a clock update.
-         */
-        private int id;
-        public BerkeleySlaveClient(NetworkProxy proxy, int id)
-        {
-            super(proxy);
-            this.id = id;
-        }
+		private int id;
+		private ArrayList<BerkeleySlaveClient> slaves;
 
-        public int getID() { return this.id; }
+		public BerkeleyMasterClient(NetworkProxy proxy, int id, ArrayList<BerkeleySlaveClient> slaves)
+		{
+			super(proxy);
+			this.id = id;
+			this.slaves = slaves;
+		}
 
-        @Override
-        public void run()
-        {
-            proxy.setID(this.id);
-            while(true)
-            {
-                Message recvmsg = proxy.recvMessage(0);
-                // Check message type and handle accordingly
-                if(recvmsg instanceof IntegerMessage){
-                    System.out.printf("Time request message received at slave: %d%n", this.id);
-                    proxy.sendMessage(new LongMessage(proxy.getTime()), 0);
-                    
-                }else {
-                    recvmsg = (LongMessage)recvmsg;
-                    System.out.printf("Time adjustment received at slave: %d%n", this.id);
-                    proxy.setTime(proxy.getTime() + (long)recvmsg.getMsg());
-                    System.out.printf("New time at slave %d -> %d%n", this.id, proxy.getTime());
-                }
+		@Override
+		public void run()
+		{
+			proxy.setID(this.id);
 
-            }
+			long[] slaveTimeDiffs = new long[slaves.size()];
+			int[] sourceId = new int[1];
+			while (true)
+			{
+				try
+				{
+					Thread.sleep(2000);
+				}
+				catch (InterruptedException e)
+				{
+				}
 
-        } 
-    }
+				long startTime = proxy.getTime();
+				for (int i = 0; i < slaves.size(); i++)
+				{
+					proxy.sendMessage(new FieldMessage<Long>(0L), i + 1);
+				}
+
+				for (int i = 0; i < slaves.size(); i++)
+				{
+					FieldMessage<Long> msg = (FieldMessage<Long>) proxy.recvAnyMessage(sourceId);
+					slaveTimeDiffs[sourceId[0] - 1] = startTime - msg.getMsg() + (proxy.getTime() - startTime) / 2;
+				}
+
+				long avgTimeDiff = 0;
+
+				for (int i = 0; i < slaves.size(); i++)
+				{
+					avgTimeDiff += slaveTimeDiffs[i];
+				}
+
+				avgTimeDiff /= slaves.size() + 1;
+
+				for (int i = 0; i < slaves.size(); i++)
+				{
+					proxy.sendMessage(new FieldMessage<Long>(slaveTimeDiffs[i] - avgTimeDiff), i + 1);
+				}
+
+				proxy.setTime(proxy.getTime() - avgTimeDiff);
+
+			}
+
+		}
+	}
+
+	static class BerkeleySlaveClient extends Client
+	{
+		/**
+		 * Passing IntegerMessage to slaves signals a request for time. Passing
+		 * a LongMessage indicates that message contains a clock update.
+		 */
+		private int id;
+
+		public BerkeleySlaveClient(NetworkProxy proxy, int id)
+		{
+			super(proxy);
+			this.id = id;
+		}
+
+		public int getID()
+		{
+			return this.id;
+		}
+
+		@Override
+		public void run()
+		{
+			proxy.setID(this.id);
+			boolean waitingForRequest = true;
+			while (true)
+			{
+				FieldMessage<Long> recvmsg = (FieldMessage<Long>) proxy.recvMessage(0);
+				// Check message type and handle accordingly
+				if (waitingForRequest)
+				{
+					// System.out.printf("Time request message received at slave: %d%n", this.id);
+					proxy.sendMessage(new FieldMessage<Long>(proxy.getTime()), 0);
+					waitingForRequest = false;
+
+				}
+				else
+				{
+					// System.out.printf("Time adjustment received at slave:
+					// %d%n", this.id);
+					proxy.setTime(proxy.getTime() + (long) recvmsg.getMsg());
+					// System.out.printf("New time at slave %d -> %d%n",this.id, proxy.getTime());
+					waitingForRequest = true;
+				}
+
+			}
+
+		}
+	}
 
 }

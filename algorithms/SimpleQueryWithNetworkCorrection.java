@@ -5,7 +5,7 @@ import java.util.Random;
 import clockSynchronization.base.Client;
 import clockSynchronization.base.ClockReader;
 import clockSynchronization.base.FaultyClock;
-import clockSynchronization.base.LongMessage;
+import clockSynchronization.base.FieldMessage;
 import clockSynchronization.base.NetworkLatency;
 import clockSynchronization.base.NetworkProxy;
 import clockSynchronization.base.NetworkQueue;
@@ -52,6 +52,7 @@ public class SimpleQueryWithNetworkCorrection
 		public long getLatency(int source, int destination)
 		{
 			return (long) (500000000L + rand.nextGaussian() * 10000000);
+			//return 500000000L;
 		}
 
 	}
@@ -71,7 +72,7 @@ public class SimpleQueryWithNetworkCorrection
 			while (true)
 			{
 				proxy.recvMessage(2);
-				proxy.sendMessage(new LongMessage(proxy.getTime()), 2);
+				proxy.sendMessage(new FieldMessage<Long>(proxy.getTime()), 2);
 			}
 		}
 
@@ -92,13 +93,13 @@ public class SimpleQueryWithNetworkCorrection
 			while (true)
 			{
 				long startTime = proxy.getTime();
-				proxy.sendMessage(new LongMessage(0), 1);
-				LongMessage lm = (LongMessage) proxy.recvMessage(1);
+				proxy.sendMessage(new FieldMessage<Long>(0L), 1);
+				FieldMessage<Long> lm = (FieldMessage<Long>) proxy.recvMessage(1);
 				long timeToSendAndReceive = proxy.getTime() - startTime;
-				proxy.setTime(lm.l + timeToSendAndReceive / 2);
+				proxy.setTime(lm.getMsg() + timeToSendAndReceive / 2);
 				try
 				{
-					Thread.sleep(1000);
+					Thread.sleep(2000);
 				}
 				catch (InterruptedException e)
 				{

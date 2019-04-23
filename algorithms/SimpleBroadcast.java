@@ -1,9 +1,11 @@
 package clockSynchronization.algorithms;
 
+import java.util.Random;
+
 import clockSynchronization.base.Client;
 import clockSynchronization.base.ClockReader;
 import clockSynchronization.base.FaultyClock;
-import clockSynchronization.base.LongMessage;
+import clockSynchronization.base.FieldMessage;
 import clockSynchronization.base.NetworkLatency;
 import clockSynchronization.base.NetworkProxy;
 import clockSynchronization.base.NetworkQueue;
@@ -12,28 +14,38 @@ public class SimpleBroadcast
 {
 	public static void main(String[] args)
 	{
+		int numNodes = 2;
+
+		Random rand = new Random();
+
 		NetworkQueue queue = new NetworkQueue();
 		FaultyClock goodClock = new FaultyClock(0, 0);
-		FaultyClock badClock = new FaultyClock(.01, 1e6);
-		
+
 		NetworkLatency latency = new Latency();
 
-		NetworkProxy proxy1 = new NetworkProxy(queue, goodClock,latency);
-		NetworkProxy proxy2 = new NetworkProxy(queue, badClock,latency);
+		NetworkProxy proxy1 = new NetworkProxy(queue, goodClock, latency);
+		proxy1.setID(0);
 
-		GoodClient good = new GoodClient(proxy1);
-		BadClient bad = new BadClient(proxy2);
-
-		new Thread(good).start();
-		new Thread(bad).start();
+		GoodClient good = new GoodClient(proxy1, numNodes);
 
 		ClockReader cr = new ClockReader();
 		cr.addClock(goodClock);
-		cr.addClock(badClock);
+
+		for (int i = 1; i < numNodes; i++)
+		{
+			FaultyClock fc = new FaultyClock(i/100.0, 1e6);
+			NetworkProxy proxy = new NetworkProxy(queue, fc, latency);
+			proxy.setID(i);
+			BadClient bad = new BadClient(proxy);
+			cr.addClock(fc);
+			new Thread(bad).start();
+		}
+
+		new Thread(good).start();
 
 		cr.printClocks(50);
 	}
-	
+
 	static class Latency implements NetworkLatency
 	{
 
@@ -41,28 +53,31 @@ public class SimpleBroadcast
 		public long getLatency(int source, int destination)
 		{
 			return 500000000L;
+			//return 0;
 		}
-		
+
 	}
 
 	static class GoodClient extends Client
 	{
+		int numNodes;
 
-		public GoodClient(NetworkProxy proxy)
+		public GoodClient(NetworkProxy proxy, int numNodes)
 		{
 			super(proxy);
+			this.numNodes = numNodes;
 		}
 
 		@Override
 		public void run()
 		{
-			proxy.setID(1);
 			while (true)
 			{
-				proxy.sendMessage(new LongMessage(proxy.getTime()), 2);
+				for (int i = 1; i < numNodes; i++)
+					proxy.sendMessage(new FieldMessage<Long>(proxy.getTime()), i);
 				try
 				{
-					Thread.sleep(1000);
+					Thread.sleep(5000);
 				}
 				catch (InterruptedException e)
 				{
@@ -83,11 +98,10 @@ public class SimpleBroadcast
 		@Override
 		public void run()
 		{
-			proxy.setID(2);
 			while (true)
 			{
-				LongMessage lm = (LongMessage) proxy.recvMessage(1);
-				proxy.setTime(lm.l);
+				FieldMessage<Long> lm = (FieldMessage<Long>) proxy.recvMessage(0);
+				proxy.setTime(lm.getMsg());
 			}
 		}
 

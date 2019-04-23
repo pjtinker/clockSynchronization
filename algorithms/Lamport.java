@@ -3,8 +3,7 @@ package clockSynchronization.algorithms;
 import clockSynchronization.base.Client;
 import clockSynchronization.base.ClockReader;
 import clockSynchronization.base.FaultyClock;
-import clockSynchronization.base.IntegerMessage;
-import clockSynchronization.base.LongMessage;
+import clockSynchronization.base.FieldMessage;
 import clockSynchronization.base.NetworkLatency;
 import clockSynchronization.base.NetworkProxy;
 import clockSynchronization.base.NetworkQueue;
@@ -68,9 +67,9 @@ public class Lamport {
             }
         }
 
-        public void updateClock(IntegerMessage im)
+        public void updateClock(FieldMessage<Integer> im)
         {
-            this.logicalClockCount = Math.max(im.i, this.logicalClockCount) + 1;
+            this.logicalClockCount = Math.max(im.getMsg(), this.logicalClockCount) + 1;
             System.out.printf("Process %d updated.  Internal count: %d%n", 
                               this.id,
                               this.logicalClockCount);
@@ -82,7 +81,7 @@ public class Lamport {
             if(this.id == 1)
             {
                 this.logicalClockCount += 1;
-                IntegerMessage sendmsg = new IntegerMessage(this.logicalClockCount);
+                FieldMessage<Integer> sendmsg = new FieldMessage<Integer>(this.logicalClockCount);
                 System.out.printf("Sending message from %d with count %d at time %d%n", 
                                     this.id, 
                                     this.logicalClockCount,
@@ -92,16 +91,16 @@ public class Lamport {
             while (true) 
             {
                 internalEvent();
-                IntegerMessage recvmsg = (IntegerMessage) proxy.recvMessage((this.id % 2) + 1);
+                FieldMessage<Integer> recvmsg = (FieldMessage<Integer>) proxy.recvMessage((this.id % 2) + 1);
                 this.logicalClockCount += 1;
                 System.out.printf("Received msg at process %d.  Internal count: %d, Recv count: %d%n", 
                                   this.id,
                                   this.logicalClockCount, 
-                                  recvmsg.i);
+                                  recvmsg.getMsg());
                 updateClock(recvmsg);
 
                 this.logicalClockCount += 1;
-                IntegerMessage sendmsg = new IntegerMessage(this.logicalClockCount);
+                FieldMessage<Integer> sendmsg = new FieldMessage<Integer>(this.logicalClockCount);
                 System.out.printf("Sending message from %d with count %d at time %d%n", 
                                     this.id, 
                                     this.logicalClockCount,

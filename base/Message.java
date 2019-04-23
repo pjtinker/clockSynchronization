@@ -1,6 +1,6 @@
 package clockSynchronization.base;
 
-public interface Message<T>
+public interface Message
 {
-    public T getMsg();
+
 }

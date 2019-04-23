@@ -35,6 +35,11 @@ public class NetworkProxy
 		return queue.recvMessage(source, id);
 	}
 
+	public Message recvAnyMessage(int[] source)
+	{
+		return queue.recvAnyMessage(source, id);
+	}
+
 	public void setID(int id)
 	{
 		this.id = id;

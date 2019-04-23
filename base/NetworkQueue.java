@@ -41,6 +41,28 @@ public class NetworkQueue
 		return mat.message;
 
 	}
+	
+	public synchronized Message recvAnyMessage(int[] source, int destination)
+	{
+		while (queue.isEmpty() || queue.peek().destination != destination )
+		{
+			try
+			{
+				this.wait();
+			}
+			catch (InterruptedException e)
+			{
+			}
+		}
+		while (queue.peek().time - System.nanoTime() > 0)
+		{
+		}
+		MessageAndTime mat = queue.poll();
+		this.notifyAll();
+		source[0]=mat.source;
+		return mat.message;
+
+	}
 
 	private static class MessageAndTime implements Comparable<MessageAndTime>
 	{
