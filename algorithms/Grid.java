@@ -6,7 +6,7 @@ import java.util.Random;
 import clockSynchronization.base.Client;
 import clockSynchronization.base.ClockReader;
 import clockSynchronization.base.FaultyClock;
-import clockSynchronization.base.FieldMessage;
+import clockSynchronization.base.GridMessage;
 import clockSynchronization.base.NetworkLatency;
 import clockSynchronization.base.Message;
 import clockSynchronization.base.NetworkProxy;
@@ -19,7 +19,9 @@ public class Grid
     {
         NetworkQueue queue = new NetworkQueue();
         ClockReader cr = new ClockReader();
-        
+        Random r = new Random();
+        double min = 0.0001;
+        double max = 0.5;
         int matSize = 3;
         int neighborCount = 0;
         ArrayList<GridClient> clients = new ArrayList<GridClient>();
@@ -28,17 +30,28 @@ public class Grid
             for(int k = 0; k < 3; k++)
             {
                 NetworkLatency latency = new Latency();
-                FaultyClock bc = new FaultyClock(.0, 1e6);  
+                FaultyClock bc;
+                if(neighborCount == 0)
+                {
+                    bc = new FaultyClock(.0, 0);
+                }
+                else
+                {
+                    double v = (neighborCount % 2 == 0) ? 1e5 : 1e7;
+                    bc = new FaultyClock(.001, v);  
+                }
+
                 NetworkProxy proxy = new NetworkProxy(queue, bc, latency);
                 int [] neighbors = getNeighbors(i, k, matSize, matSize);
 
                 GridClient gc = new GridClient(proxy, neighborCount++, neighbors);
                 clients.add(gc);
                 cr.addClock(bc);
+                new Thread(gc).start();
             }
             
         }
-
+        cr.printClocks(50);
     }
     static class Latency implements NetworkLatency
     {
@@ -74,21 +87,65 @@ public class Grid
             proxy.setID(this.id);
             long [] timeDiffs = new long[neighbors.length];
             int[] sourceId = new int[1];
+            boolean proceed = false;
+            if(this.id == 0)
+            {
+                proceed = true;
+            }
             while(true)
             {
                 try
                 {
-                    Thread.sleep(2000);
+                    Thread.sleep(100);
                 }
                 catch(InterruptedException ie)
                 {
                 }
-
-                long startTime = proxy.getTime();
-                for(int i = 0; i < neighbors.length; i++)
+                if(proceed)
                 {
-                    proxy.sendMessage(new FieldMessage<Long>(0L), neighbors[i]);
+                    long startTime = proxy.getTime();
+                    for(int i = 0; i < this.neighbors.length; i++)
+                    {
+                        // System.out.println("Sending message from " + String.valueOf(this.id) + " to " + String.valueOf(this.neighbors[i]));
+                        proxy.sendMessage(new GridMessage<Long>(0L, false), this.neighbors[i]);
+                        GridMessage<Long> msg = (GridMessage<Long>) proxy.recvMessage(this.neighbors[i]);
+                        long diff = startTime - msg.getMsg() + 
+                                    (proxy.getTime() - startTime) / 2;
+                        // System.out.println("Time rec: " + msg.getMsg() / 1e9 + 
+                                            // " Diff time: " + diff / 1e9);
+                        timeDiffs[i] = diff;
+                    }
+                    long avgDiff = 0;
+
+                    for(int k = 0; k < timeDiffs.length; k++)
+                    {
+                        avgDiff += timeDiffs[k];
+                    }
+                    avgDiff += proxy.getTime() - startTime;
+                    avgDiff /= this.neighbors.length + 1;
+                    // System.out.println("Avg diff: " + avgDiff / 1e9);
+                    proxy.setTime(proxy.getTime() - avgDiff);
+
+                    // System.out.println("Client " + String.valueOf(this.id) + " returning from proceed..."); 
+                    int nextUp = 0;
+                    if(this.id != 8) nextUp = this.id + 1;
+                    proxy.sendMessage(new GridMessage<Long>(0L, true), nextUp);
+                    proceed = false;
                 }
+                else
+                {
+                    GridMessage<Long> recv = (GridMessage<Long>) proxy.recvAnyMessage(sourceId);
+                    // System.out.println("Message received at " + String.valueOf(this.id) + " from " + String.valueOf(sourceId[0]));
+                    if(recv.getBool() == true)
+                    {
+                        proceed = true;
+                    }
+                    else
+                    {
+                        proxy.sendMessage(new GridMessage<Long>(proxy.getTime(), false), sourceId[0]);
+                    }
+                }
+
             }
         }
     }

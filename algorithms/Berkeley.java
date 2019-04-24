@@ -180,20 +180,15 @@ public class Berkeley
 			while (true)
 			{
 				FieldMessage<Long> recvmsg = (FieldMessage<Long>) proxy.recvMessage(0);
-				// Check message type and handle accordingly
 				if (waitingForRequest)
 				{
-					// System.out.printf("Time request message received at slave: %d%n", this.id);
 					proxy.sendMessage(new FieldMessage<Long>(proxy.getTime()), 0);
 					waitingForRequest = false;
 
 				}
 				else
 				{
-					// System.out.printf("Time adjustment received at slave:
-					// %d%n", this.id);
 					proxy.setTime(proxy.getTime() + (long) recvmsg.getMsg());
-					// System.out.printf("New time at slave %d -> %d%n",this.id, proxy.getTime());
 					waitingForRequest = true;
 				}
 
