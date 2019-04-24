@@ -14,7 +14,10 @@ import clockSynchronization.base.NetworkQueue;
 
 public class Grid
 {
-
+    /**
+     * Grid algorithm.  Hard coded for a 3x3 matrix
+     * @param args
+     */
     public static void main(String[] args)
     {
         NetworkQueue queue = new NetworkQueue();
@@ -106,13 +109,10 @@ public class Grid
                     long startTime = proxy.getTime();
                     for(int i = 0; i < this.neighbors.length; i++)
                     {
-                        // System.out.println("Sending message from " + String.valueOf(this.id) + " to " + String.valueOf(this.neighbors[i]));
                         proxy.sendMessage(new GridMessage<Long>(0L, false), this.neighbors[i]);
                         GridMessage<Long> msg = (GridMessage<Long>) proxy.recvMessage(this.neighbors[i]);
                         long diff = startTime - msg.getMsg() + 
                                     (proxy.getTime() - startTime) / 2;
-                        // System.out.println("Time rec: " + msg.getMsg() / 1e9 + 
-                                            // " Diff time: " + diff / 1e9);
                         timeDiffs[i] = diff;
                     }
                     long avgDiff = 0;
@@ -123,10 +123,8 @@ public class Grid
                     }
                     avgDiff += proxy.getTime() - startTime;
                     avgDiff /= this.neighbors.length + 1;
-                    // System.out.println("Avg diff: " + avgDiff / 1e9);
                     proxy.setTime(proxy.getTime() - avgDiff);
 
-                    // System.out.println("Client " + String.valueOf(this.id) + " returning from proceed..."); 
                     int nextUp = 0;
                     if(this.id != 8) nextUp = this.id + 1;
                     proxy.sendMessage(new GridMessage<Long>(0L, true), nextUp);
@@ -135,7 +133,6 @@ public class Grid
                 else
                 {
                     GridMessage<Long> recv = (GridMessage<Long>) proxy.recvAnyMessage(sourceId);
-                    // System.out.println("Message received at " + String.valueOf(this.id) + " from " + String.valueOf(sourceId[0]));
                     if(recv.getBool() == true)
                     {
                         proceed = true;

@@ -12,6 +12,9 @@ import clockSynchronization.base.NetworkQueue;
 
 public class SimpleQueryWithNetworkCorrection
 {
+	/**
+	 * Implementation of Cristian's clock synchronization Algorithm
+	 */
 	public static void main(String[] args)
 	{
 		NetworkQueue queue = new NetworkQueue();
