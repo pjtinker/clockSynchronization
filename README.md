@@ -7,5 +7,5 @@ To compile:
   Compile *.java first in base, second in algorithms
   
 To run:
-  from 
+  from root directory -> java clockSynchronization.algorithms.<[SimpleWithBroadcast, Berkeley, Grid]>
   
